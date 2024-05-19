@@ -60,8 +60,16 @@
                     xanchor: 'left'
                 }
             };
+
+            var trace2 = {
+                name: 'Trace 2',
+                x: generateDateTime('2024-04-01T12:00:00Z', 5),
+                y: generateRandomYValues(5),
+                type: 'scatter',
+                tooltiptemplate: "%{fullData.name}<br>%{x|%H:%M:%S}<br>y: %{y:.2e}",
+            };
             
-            var data = [trace1];
+            var data = [trace1, trace2];
             
             var layout = {
                 title: 'Custom Tooltip Example'
