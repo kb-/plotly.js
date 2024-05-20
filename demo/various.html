@@ -419,37 +419,24 @@
                 displayModeBar: true,
             };
 
-            function createPlot(id, data, layout, config) {
-                Plotly.newPlot(id, data, layout, config).then(function() {
-                    var tooltipButton = document.querySelector('.modebar-btn[data-title="Add Tooltip to Points"]');
-                    if (tooltipButton) {
-                        tooltipButton.addEventListener('click', function() {
-                            console.log('Tooltip button clicked');
-                        });
-                    } else {
-                        console.error('Tooltip button not found');
-                    }
-                });
-            }
-
-            createPlot('scatter-plot', scatterData, Object.assign({}, layout), config);
-            createPlot('scatterLog-plot', scatterLogData, Object.assign({},scatterLogLayout), config);
-            createPlot('bar-plot', barData, Object.assign({}, layout, { xaxis: { type: 'category' } }), config);
-            createPlot('heatmap-plot', heatmapData, Object.assign({}, layout), config);
-            createPlot('histogram-plot', histogramData, {'title':'(has arrow snapping position issues, not always matching hover label position)'}, config);
-            createPlot('histogram2d-plot', histogram2dData, Object.assign({}, layout), config);
-            createPlot('histogram2dcontour-plot', histogram2dContourData, Object.assign({}, {'title':'(has some arrow snapping position issues, but identical to hover label position)'}), config);
-            createPlot('scattergl-plot', scatterglData, Object.assign({}, layout), config);
-            createPlot('splom-plot', splomData, {'title':'(only works for the 1st plot. Arrow always snaps in the 1st plot despite right hover label position)'}, config);
-            createPlot('pointcloud-plot', pointcloudData, {'title':'NOT ACTIVE'}, config);
-            createPlot('ohlc-plot', ohlcData, Object.assign({}, {'title':'(Arrow snaps mid-height)'}), config);
-            createPlot('candlestick-plot', candlestickData, Object.assign({}, {'title':'(Arrow snaps mid-height)'}), config);
-            createPlot('scatterternary-plot', scatterternaryData, {'title':'NOT ACTIVE'}, config);
-            createPlot('scatterpolargl-plot', scatterpolarglData, {'title':'NOT ACTIVE'}, config);
-            createPlot('carpet-plot', carpetData, {'title':'NOT ACTIVE'}, config);
-            createPlot('scattercarpet-plot', scattercarpetData, {'title':'(Arrow snaps at wrong position)'}, config);
-            createPlot('contourcarpet-plot', contourcarpetData, Object.assign(contourcarpetLayout, {'title':'NOT ACTIVE'}), config);
-            createPlot('parcoords-plot', parcoordsData, {'title':'NOT ACTIVE'}, config);
+            Plotly.newPlot('scatter-plot', scatterData, Object.assign({}, layout), config);
+            Plotly.newPlot('scatterLog-plot', scatterLogData, Object.assign({},scatterLogLayout), config);
+            Plotly.newPlot('bar-plot', barData, Object.assign({}, layout, { xaxis: { type: 'category' } }), config);
+            Plotly.newPlot('heatmap-plot', heatmapData, Object.assign({}, layout), config);
+            Plotly.newPlot('histogram-plot', histogramData, {'title':'(has arrow snapping position issues, not always matching hover label position)'}, config);
+            Plotly.newPlot('histogram2d-plot', histogram2dData, Object.assign({}, layout), config);
+            Plotly.newPlot('histogram2dcontour-plot', histogram2dContourData, Object.assign({}, {'title':'(has some arrow snapping position issues, but identical to hover label position)'}), config);
+            Plotly.newPlot('scattergl-plot', scatterglData, Object.assign({}, layout), config);
+            Plotly.newPlot('splom-plot', splomData, {'title':'(only works for the 1st plot. Arrow always snaps in the 1st plot despite right hover label position)'}, config);
+            Plotly.newPlot('pointcloud-plot', pointcloudData, {'title':{'text':'ok when forced (figure not in cartesian group)', 'font':{'color':'green'}}}, config);
+            Plotly.newPlot('ohlc-plot', ohlcData, Object.assign({}, {'title':'(Arrow snaps mid-height)'}), config);
+            Plotly.newPlot('candlestick-plot', candlestickData, Object.assign({}, {'title':'(Arrow snaps mid-height)'}), config);
+            Plotly.newPlot('scatterternary-plot', scatterternaryData, {'title':'Not compatible. Breaks graph'}, config);
+            Plotly.newPlot('scatterpolargl-plot', scatterpolarglData, {'title':'Not compatible. Breaks graph'}, config);
+            Plotly.newPlot('carpet-plot', carpetData, {'title':'Click has no effect. hover not shown'}, config);
+            Plotly.newPlot('scattercarpet-plot', scattercarpetData, {'title':'(Arrow snaps at wrong position)'}, config);
+            Plotly.newPlot('contourcarpet-plot', contourcarpetData, Object.assign(contourcarpetLayout, {'title':'Click has no effect. hover not shown'}), config);
+            Plotly.newPlot('parcoords-plot', parcoordsData, {'title':'Click has no effect. hover not shown'}, config);
 
         });
     </script>

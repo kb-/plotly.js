@@ -185,7 +185,7 @@ function getButtonGroups(gd) {
     // regardless of what other types are on the plot, since they'll all
     // just treat any truthy hovermode as 'closest'
     if(hasCartesian) {
-        hoverGroup = ['toggleSpikelines', 'hoverClosestCartesian', 'hoverCompareCartesian', 'tooltip'];
+        hoverGroup = ['toggleSpikelines', 'hoverClosestCartesian', 'hoverCompareCartesian']; // , 'tooltip'
     }
     if(hasNoHover(fullData) || hasUnifiedHoverLabel) {
         hoverGroup = [];
@@ -261,6 +261,7 @@ function getButtonGroups(gd) {
         buttonsToAdd = newList;
     }
 
+    dragModeGroup.push('tooltip');
     addGroup(dragModeGroup);
     addGroup(zoomGroup.concat(resetGroup));
     addGroup(enabledHoverGroup);
