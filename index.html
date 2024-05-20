@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Plotly Tooltip Button Test</title>
+    <title>Plotly Tooltip</title>
     <script src="./dist/plotly.js"></script>
     <style>
         body {
@@ -15,8 +15,9 @@
     </style>
 </head>
 <body>
-    <h1>Plotly Tooltip Button Test</h1>
+    <h1>Plotly Tooltip</h1>
     <div id="plot"></div>
+    <div id="heatmap-plot"></div>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
         
@@ -72,8 +73,30 @@
             var data = [trace1, trace2];
             
             var layout = {
-                title: 'Custom Tooltip Example'
+                title: 'Try the tooltip button!'
             };
+            
+            // Generate heatmap data
+            var x = Array.from({ length: 400 }, (_, i) => i / 40);
+            var y = Array.from({ length: 400 }, (_, i) => i / 40);
+            var z = Array.from({ length: 400 }, (_, i) => 
+                Array.from({ length: 400 }, (_, j) => 
+                    Math.sin(i / 40) * Math.cos(j / 40)
+                )
+            );
+
+            var heatmapData = [{
+                z: z,
+                x: x,
+                y: y,
+                type: 'heatmap',
+                colorscale: 'Viridis',
+				tooltip: {
+                    bgcolor: "rgba(255, 255, 255, 0.2)"
+                },
+                tooltiptemplate: "x: %{x:.2f},<br>y: %{y:.2f},<br>z: %{z:.3f}"
+            }];
+            
 
             var config = {
                 editable: true,//editable is important to allow Tooltip drag-positionning and deletion
@@ -82,18 +105,8 @@
                 displayModeBar: true  // Ensure the modebar is displayed
             };
 
-            Plotly.newPlot('plot', data, layout, config).then(function() {
-                // Wait for the plot to be fully initialized before querying the button
-                var tooltipButton = document.querySelector('.modebar-btn[data-title="Add Tooltip to Points"]');
-
-                if (tooltipButton) {
-                    tooltipButton.addEventListener('click', function() {
-                        console.log('Tooltip button clicked');
-                    });
-                } else {
-                    console.error('Tooltip button not found');
-                }
-            });
+            Plotly.newPlot('plot', data, layout, config);
+            Plotly.newPlot('heatmap-plot', heatmapData, {}, config);
         });
     </script>
 </body>
