@@ -4,7 +4,7 @@ import datetime
 import numpy as np
 
 custom_output_file = 'plot.html'
-plotly_js_path = '../../dist/plotly.js'
+plotly_js_path = '../plotly.js'
 
 
 def generate_date_time(start, count):
