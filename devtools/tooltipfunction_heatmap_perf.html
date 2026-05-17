@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Plotly Tooltip Function Perf Harness</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --panel-2: #1f2937;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --accent: #22c55e;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+            color: var(--text);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.92);
+            border-right: 1px solid var(--border);
+        }
+
+        .plot-wrap {
+            padding: 20px;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 22px;
+        }
+
+        p,
+        label,
+        button,
+        input {
+            font-size: 14px;
+        }
+
+        p {
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        .field {
+            margin: 14px 0;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--muted);
+        }
+
+        .field input {
+            width: 100%;
+            padding: 10px 12px;
+            color: var(--text);
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        button {
+            padding: 10px 14px;
+            color: var(--text);
+            background: #1d4ed8;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button.secondary {
+            background: #374151;
+        }
+
+        .metrics {
+            margin-top: 18px;
+            padding: 14px;
+            background: rgba(17, 24, 39, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .metrics div {
+            margin: 8px 0;
+        }
+
+        .mono {
+            font-family: Consolas, "SFMono-Regular", monospace;
+        }
+
+        #graph {
+            width: 100%;
+            height: calc(100vh - 40px);
+            min-height: 720px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+        }
+
+        .hint {
+            margin-top: 16px;
+            padding: 12px 14px;
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 10px;
+            color: #bbf7d0;
+        }
+
+        @media (max-width: 1000px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            #graph {
+                height: 70vh;
+                min-height: 540px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <h1>Tooltip Function Perf</h1>
+            <p>
+                Generates a large heatmap in-browser and attaches a tooltip callback that searches
+                for a local maximum inside a user-defined kernel.
+            </p>
+
+            <div class="field">
+                <label for="xCount">Columns</label>
+                <input id="xCount" type="number" min="100" step="100" value="4000">
+            </div>
+
+            <div class="field">
+                <label for="yCount">Rows</label>
+                <input id="yCount" type="number" min="100" step="100" value="4000">
+            </div>
+
+            <div class="field">
+                <label for="kernelSizeX">Kernel Size X (plot units)</label>
+                <input id="kernelSizeX" type="number" min="1" step="1" value="25">
+            </div>
+
+            <div class="field">
+                <label for="kernelSizeY">Kernel Size Y (plot units)</label>
+                <input id="kernelSizeY" type="number" min="1" step="1" value="25">
+            </div>
+
+            <div class="actions">
+                <button id="renderBtn">Render Plot</button>
+                <button id="clearBtn" class="secondary">Clear Tooltips</button>
+            </div>
+
+            <div class="metrics">
+                <div>Generation: <span id="generationMs" class="mono">-</span></div>
+                <div>Render: <span id="renderMs" class="mono">-</span></div>
+                <div>Last callback: <span id="callbackMs" class="mono">-</span></div>
+                <div>Grid cells: <span id="cellCount" class="mono">-</span></div>
+            </div>
+
+            <div class="hint">
+                Enable the modebar tooltip tool, then click inside the heatmap. If 4000x4000 is too
+                heavy for your browser or GPU, reduce rows and columns and rerender.
+            </div>
+        </aside>
+
+        <main class="plot-wrap">
+            <div id="graph"></div>
+        </main>
+    </div>
+
+    <script src="../dist/plotly.js"></script>
+    <script>
+        var gd = document.getElementById('graph');
+        var generationMsEl = document.getElementById('generationMs');
+        var renderMsEl = document.getElementById('renderMs');
+        var callbackMsEl = document.getElementById('callbackMs');
+        var cellCountEl = document.getElementById('cellCount');
+        var xCountEl = document.getElementById('xCount');
+        var yCountEl = document.getElementById('yCount');
+        var kernelSizeXEl = document.getElementById('kernelSizeX');
+        var kernelSizeYEl = document.getElementById('kernelSizeY');
+        var renderBtn = document.getElementById('renderBtn');
+        var clearBtn = document.getElementById('clearBtn');
+
+        function buildAxisValues(count, span) {
+            var out = new Float32Array(count);
+            var step = span / Math.max(1, count - 1);
+            for(var i = 0; i < count; i++) {
+                out[i] = i * step;
+            }
+            return out;
+        }
+
+        function buildZMatrix(xs, ys) {
+            var rows = new Array(ys.length);
+
+            for(var iy = 0; iy < ys.length; iy++) {
+                var y = ys[iy];
+                var row = new Float32Array(xs.length);
+
+                for(var ix = 0; ix < xs.length; ix++) {
+                    var x = xs[ix];
+
+                    var wave = (
+                        Math.sin(x * 0.08) * 0.6 +
+                        Math.cos(y * 0.1) * 0.5 +
+                        Math.sin((x + y) * 0.03) * 0.4
+                    );
+
+                    var peak1 = 6 * Math.exp(-(((x - 80) * (x - 80)) + ((y - 120) * (y - 120))) / 900);
+                    var peak2 = 8 * Math.exp(-(((x - 210) * (x - 210)) + ((y - 70) * (y - 70))) / 1200);
+                    var ridge = 3 * Math.exp(-((y - (0.35 * x + 40)) * (y - (0.35 * x + 40))) / 500);
+
+                    row[ix] = wave + peak1 + peak2 + ridge;
+                }
+
+                rows[iy] = row;
+            }
+
+            return rows;
+        }
+
+        function setMetrics(generationMs, renderMs, xCount, yCount) {
+            generationMsEl.textContent = generationMs + ' ms';
+            renderMsEl.textContent = renderMs + ' ms';
+            cellCountEl.textContent = (xCount * yCount).toLocaleString();
+        }
+
+        function attachTooltipFunction() {
+            gd.data[0].tooltiptemplate =
+                'Local max: %{z:.4f}<br>x: %{x:.3f}<br>y: %{y:.3f}<br>kernel: %{kernelSizeX} x %{kernelSizeY}<br>search: %{searchMs:.2f} ms';
+
+            gd.data[0].tooltipfunction = function(ctx) {
+                var start = performance.now();
+                var kernelSizeX = Number(kernelSizeXEl.value);
+                var kernelSizeY = Number(kernelSizeYEl.value);
+                var z = ctx.fullTrace._z || ctx.calcdata[0].z;
+                var xs = (ctx.fullTrace._x && ctx.fullTrace._x.length) ?
+                    ctx.fullTrace._x :
+                    ctx.calcdata[0].xRanges.map(function(r) { return (r[0] + r[1]) / 2; });
+                var ys = (ctx.fullTrace._y && ctx.fullTrace._y.length) ?
+                    ctx.fullTrace._y :
+                    ctx.calcdata[0].yRanges.map(function(r) { return (r[0] + r[1]) / 2; });
+
+                var halfX = kernelSizeX / 2;
+                var halfY = kernelSizeY / 2;
+                var minX = ctx.point.x - halfX;
+                var maxX = ctx.point.x + halfX;
+                var minY = ctx.point.y - halfY;
+                var maxY = ctx.point.y + halfY;
+                var best = -Infinity;
+                var bestX = ctx.point.x;
+                var bestY = ctx.point.y;
+
+                for(var iy = 0; iy < ys.length; iy++) {
+                    var y = ys[iy];
+                    if(y < minY || y > maxY) continue;
+
+                    for(var ix = 0; ix < xs.length; ix++) {
+                        var x = xs[ix];
+                        if(x < minX || x > maxX) continue;
+
+                        var value = z[iy][ix];
+                        if(value > best) {
+                            best = value;
+                            bestX = x;
+                            bestY = y;
+                        }
+                    }
+                }
+
+                var elapsed = performance.now() - start;
+                callbackMsEl.textContent = elapsed.toFixed(2) + ' ms';
+
+                return {
+                    point: {
+                        x: bestX,
+                        y: bestY,
+                        z: best,
+                        kernelSizeX: kernelSizeX,
+                        kernelSizeY: kernelSizeY,
+                        searchMs: elapsed
+                    },
+                    annotation: {
+                        x: bestX,
+                        y: bestY
+                    }
+                };
+            };
+        }
+
+        function renderPlot() {
+            renderBtn.disabled = true;
+            renderBtn.textContent = 'Rendering...';
+
+            var xCount = Number(xCountEl.value);
+            var yCount = Number(yCountEl.value);
+            var generationStart = performance.now();
+            var xs = buildAxisValues(xCount, 300);
+            var ys = buildAxisValues(yCount, 300);
+            var z = buildZMatrix(xs, ys);
+            var generationMs = Math.round(performance.now() - generationStart);
+
+            var data = [{
+                type: 'heatmap',
+                x: xs,
+                y: ys,
+                z: z,
+                colorscale: 'Viridis',
+                hoverongaps: false,
+                zsmooth: false,
+                tooltip: {
+                    bgcolor: 'rgba(15, 23, 42, 0.92)',
+                    bordercolor: '#22c55e',
+                    font: {
+                        color: '#f8fafc',
+                        family: 'Segoe UI, Arial, sans-serif',
+                        size: 12
+                    }
+                }
+            }];
+
+            var layout = {
+                title: {
+                    text: 'Heatmap Tooltip Function Perf Harness',
+                    font: {color: '#e5e7eb'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15, 23, 42, 0.95)',
+                font: {color: '#e5e7eb'},
+                xaxis: {
+                    title: {text: 'X'},
+                    gridcolor: 'rgba(148, 163, 184, 0.15)'
+                },
+                yaxis: {
+                    title: {text: 'Y'},
+                    gridcolor: 'rgba(148, 163, 184, 0.15)'
+                },
+                margin: {l: 70, r: 30, t: 70, b: 60},
+                annotations: []
+            };
+
+            var config = {
+                editable: true,
+                displaylogo: false,
+                responsive: true,
+                modeBarButtonsToAdd: ['tooltip']
+            };
+
+            var renderStart = performance.now();
+            Plotly.newPlot(gd, data, layout, config).then(function() {
+                var renderMs = Math.round(performance.now() - renderStart);
+                setMetrics(generationMs, renderMs, xCount, yCount);
+                callbackMsEl.textContent = '-';
+                attachTooltipFunction();
+            }).catch(function(err) {
+                console.error(err);
+                alert('Render failed. See console for details.');
+            }).finally(function() {
+                renderBtn.disabled = false;
+                renderBtn.textContent = 'Render Plot';
+            });
+        }
+
+        renderBtn.addEventListener('click', renderPlot);
+        clearBtn.addEventListener('click', function() {
+            Plotly.relayout(gd, {annotations: []});
+        });
+
+        renderPlot();
+    </script>
+</body>
+</html>
