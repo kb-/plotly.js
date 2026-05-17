@@ -38,6 +38,13 @@ Plotly.newPlot('graph', data, layout, {
 
 `tooltiptemplate` uses the same interpolation style as `hovertemplate`. It controls the text shown inside the created annotation.
 
+See Plotly's hovertemplate documentation:
+https://plotly.com/javascript/hover-text-and-formatting/
+
+Numeric formatting inside `%{...}` uses D3 format syntax, for example `%{x:.2f}` or `%{z:.3e}`.
+See the D3 format syntax reference:
+https://d3js.org/d3-format
+
 If no `tooltiptemplate` is supplied, Plotly falls back to a built-in default based on the clicked point data, typically `x`, `y`, and `z` when available.
 
 Basic scatter example:
@@ -48,7 +55,7 @@ const data = [{
   mode: 'markers',
   x: [1, 2, 3],
   y: [2, 1, 4],
-  tooltiptemplate: 'x: %{x}<br>y: %{y}'
+  tooltiptemplate: 'x: %{x:.2f}<br>y: %{y:.3f}'
 }];
 
 Plotly.newPlot('graph', data, {}, {
@@ -67,13 +74,16 @@ const data = [{
     [2, 5, 1],
     [0, 1, 4]
   ],
-  tooltiptemplate: 'x: %{x}<br>y: %{y}<br>z: %{z}'
+  tooltiptemplate: 'x: %{x:.1f}<br>y: %{y:.1f}<br>z: %{z:.3f}'
 }];
 ```
 
 ## Styling With `tooltip`
 
 `tooltip` accepts annotation-style properties. It is merged with Plotly's built-in defaults for tooltip annotations.
+
+These are the same annotation-style properties documented in Plotly's text and annotations page:
+https://plotly.com/javascript/text-and-annotations/
 
 Common styling fields include:
 
@@ -90,7 +100,7 @@ const data = [{
   mode: 'markers',
   x: [1, 2, 3],
   y: [2, 1, 4],
-  tooltiptemplate: 'Point<br>x: %{x}<br>y: %{y}',
+  tooltiptemplate: 'Point<br>x: %{x:.2f}<br>y: %{y:.2f}',
   tooltip: {
     bgcolor: 'rgba(15, 23, 42, 0.92)',
     bordercolor: '#22c55e',
@@ -142,15 +152,41 @@ The callback may return:
 Meaning of each object field:
 
 - `point`: merged into the clicked point data before `tooltiptemplate` interpolation
-- `text`: replaces the resolved template string
-- `annotation`: overrides the created annotation object
-- `style`: adds or overrides annotation styling
+- `text`: replaces the resolved template string before interpolation
+- `annotation`: overrides fields on the annotation object that Plotly is about to create
+- `style`: adds or overrides annotation styling after the trace-level `tooltip` style is read
+
+Examples for each field:
+
+Example using `point`:
+
+```js
+gd.data[0].tooltiptemplate = 'x: %{x}<br>y: %{y}<br>score: %{score:.2f}';
+
+gd.data[0].tooltipfunction = function(ctx) {
+  return {
+    point: {
+      score: ctx.point.y * 10
+    }
+  };
+};
+```
 
 Example returning a string:
 
 ```js
 gd.data[0].tooltipfunction = function(ctx) {
-  return 'Clicked x=' + ctx.point.x + '<br>Clicked y=' + ctx.point.y;
+  return 'Clicked x=' + ctx.point.x.toFixed(2) + '<br>Clicked y=' + ctx.point.y.toFixed(2);
+};
+```
+
+Example using `text`:
+
+```js
+gd.data[0].tooltipfunction = function(ctx) {
+  return {
+    text: 'Formatted value<br>y = ' + ctx.point.y.toExponential(3)
+  };
 };
 ```
 
@@ -172,6 +208,39 @@ gd.data[0].tooltipfunction = function(ctx) {
   return {
     point: {
       note: 'nearest sample'
+    }
+  };
+};
+```
+
+Example using `annotation`:
+
+```js
+gd.data[0].tooltipfunction = function(ctx) {
+  return {
+    annotation: {
+      ax: 30,
+      ay: -40,
+      xanchor: 'left'
+    }
+  };
+};
+```
+
+Use `annotation` when you want to control the annotation object itself, for example:
+
+- force a different arrow offset with `ax` and `ay`
+- change the box anchor with `xanchor` or `yanchor`
+- override the annotation position independently from the formatted point fields
+
+Example using `style`:
+
+```js
+gd.data[0].tooltipfunction = function(ctx) {
+  return {
+    style: {
+      arrowcolor: 'crimson',
+      bordercolor: 'crimson'
     }
   };
 };
@@ -247,7 +316,7 @@ console.log(ctx.trace.customdata);
 
 ### `ctx.fullTrace`
 
-The computed/defaulted trace from `gd._fullData`. Use this for values that may have been defaulted or expanded during plotting.
+The fully processed trace from `gd._fullData`. It is the plotted version of the trace after Plotly has applied defaults and internal preprocessing. Use it when you need the trace as Plotly is actually using it, not only the raw input you provided in `gd.data`.
 
 ```js
 console.log(ctx.fullTrace.tooltiptemplate);
@@ -265,21 +334,33 @@ console.log(cd0.z);
 
 ### `ctx.fullLayout`
 
-The computed layout object. Useful for locale, mode, and subplot information.
+The fully processed layout object from the rendered plot. Use it when you need the active layout state that Plotly is currently using, such as the current locale, axis objects, hover mode, subplot internals, or computed defaults.
 
 ```js
 console.log(ctx.fullLayout.hovermode);
+console.log(ctx.fullLayout._d3locale);
 ```
 
 ### `ctx.xaxis` and `ctx.yaxis`
 
-The clicked subplot axes. Useful for coordinate conversions such as `c2p`, `p2c`, and related axis helpers.
+The clicked subplot axes. These are Plotly axis objects with conversion helpers.
+
+Common internal helpers include:
+
+- `c2p`: data coordinate to pixel
+- `p2c`: pixel to data coordinate
+- `d2c`: displayed value to coordinate, often useful on categorical axes
+
+These helpers are internal Plotly axis methods rather than public top-level API methods, so they are best treated as advanced usage helpers inferred from the current implementation.
 
 ```js
 const xPixel = ctx.xaxis.c2p(ctx.point.x);
 const yPixel = ctx.yaxis.c2p(ctx.point.y);
 console.log(xPixel, yPixel);
 ```
+
+See Plotly's event data documentation for the general click-event payload shape:
+https://plotly.com/javascript/plotlyjs-events/
 
 ## `customdata` In The Callback
 
@@ -324,7 +405,7 @@ const trace = {
   mode: 'markers',
   x: [1, 2, 3],
   y: [2, 1, 4],
-  tooltiptemplate: 'x: %{x}<br>y: %{y}',
+  tooltiptemplate: 'x: %{x:.2f}<br>y: %{y:.2f}',
   tooltip: {
     arrowcolor: 'blue'
   }
@@ -342,7 +423,7 @@ Plotly.newPlot('graph', [trace], {}, {
 const gd = document.getElementById('graph');
 
 gd.data[0].tooltiptemplate =
-  'x: %{x}<br>y: %{y}<br>score: %{score}';
+  'x: %{x:.2f}<br>y: %{y:.2f}<br>score: %{score:.1f}';
 
 gd.data[0].tooltipfunction = function(ctx) {
   return {
@@ -374,6 +455,14 @@ gd.data[0].tooltip = {
 
 This pattern remaps the tooltip to the strongest value inside a rectangular kernel.
 
+In this example:
+
+- `kernelSizeX` and `kernelSizeY` are in plot data units, not pixels
+- the callback searches nearby heatmap or histogram2d cells
+- returning new `point.x`, `point.y`, and `point.z` changes both the formatted values and the default arrow anchor position
+
+If you only return `point.x` and `point.y`, the arrow already moves to that remapped point. You only need `annotation` as well if you want the annotation object itself to differ, for example with a custom `ax`, `ay`, `xanchor`, or a deliberately different `x` / `y` than the remapped point.
+
 ```js
 const gd = document.getElementById('graph');
 
@@ -381,8 +470,12 @@ gd.data[0].tooltiptemplate =
   'Local max: %{z:.4f}<br>x: %{x:.3f}<br>y: %{y:.3f}<br>kernel: %{kernelSizeX} x %{kernelSizeY}';
 
 gd.data[0].tooltipfunction = function(ctx) {
+  // Kernel size in plot units, not pixels.
   const kernelSizeX = 3;
   const kernelSizeY = 3;
+
+  // For heatmap-like traces, Plotly stores the plotted z matrix in calcdata.
+  // If _x/_y are present on the full trace, they are the plotted x/y centers.
   const z = ctx.fullTrace._z || ctx.calcdata[0].z;
   const xs = (ctx.fullTrace._x && ctx.fullTrace._x.length) ?
     ctx.fullTrace._x :
@@ -391,6 +484,7 @@ gd.data[0].tooltipfunction = function(ctx) {
     ctx.fullTrace._y :
     ctx.calcdata[0].yRanges.map(r => (r[0] + r[1]) / 2);
 
+  // Search bounds centered on the clicked point.
   const minX = ctx.point.x - kernelSizeX / 2;
   const maxX = ctx.point.x + kernelSizeX / 2;
   const minY = ctx.point.y - kernelSizeY / 2;
@@ -400,6 +494,7 @@ gd.data[0].tooltipfunction = function(ctx) {
   let bestX = ctx.point.x;
   let bestY = ctx.point.y;
 
+  // Scan the bins whose centers fall inside the kernel rectangle.
   for(let iy = 0; iy < ys.length; iy++) {
     if(ys[iy] < minY || ys[iy] > maxY) continue;
     for(let ix = 0; ix < xs.length; ix++) {
@@ -414,22 +509,40 @@ gd.data[0].tooltipfunction = function(ctx) {
   }
 
   return {
+    // These remapped point fields drive both template interpolation and
+    // the default arrow anchor position.
     point: {
       x: bestX,
       y: bestY,
       z: best,
       kernelSizeX,
       kernelSizeY
-    },
-    annotation: {
-      x: bestX,
-      y: bestY
     }
   };
 };
 ```
 
+If you want the annotation object itself to differ from the remapped point, add `annotation` explicitly:
+
+```js
+return {
+  point: {
+    x: bestX,
+    y: bestY,
+    z: best,
+    kernelSizeX,
+    kernelSizeY
+  },
+  annotation: {
+    ax: 40,
+    ay: -30
+  }
+};
+```
+
 ### Example 5: Cancellation
+
+Returning `false` or `null` is useful for conditional display when only some points or bins should produce tooltip annotations.
 
 ```js
 gd.data[0].tooltipfunction = function(ctx) {
